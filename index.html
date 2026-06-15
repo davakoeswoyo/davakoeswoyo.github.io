@@ -1,12 +1,324 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Dava Koeswoyo Portfolio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dava Koeswoyo | Portfolio v1</title>
+    <link rel="stylesheet" href="css/fonts.css">
+    <link rel="stylesheet" href="css/main.css">
+    <script src="js/portfolio-data.js" defer></script>
+    <script src="js/vendor/gsap.min.js" defer></script>
+    <script src="js/main.js" defer></script>
+    <script src="js/hero-light-pillar.js" defer></script>
 </head>
-
 <body>
-    <h1>Dava Koeswoyo Portfolio</h1>
-    <h2>WIP</h2>
+    <div id="cur" aria-hidden="true"></div>
+    <div id="cur2" aria-hidden="true"></div>
+    <div class="nav-row">
+        <span class="nav-aside">Portfolio 2026 v1</span>
+        <span class="nav-aside">Bali, Indonesia</span>
+    </div>
+
+    <nav>
+        <a href="#hero" class="nav-logo">Dava <span>K.</span></a>
+        <ul class="nav-links">
+            <li><a href="#websites">Web</a></li>
+            <li><a href="#games">Games</a></li>
+            <li><a href="#contact">Contact</a></li>
+        </ul>
+        <div class="nav-dot"></div>
+    </nav>
+
+    <main>
+        <section id="hero">
+            <div id="hero-pillar" aria-hidden="true"></div>
+            <div class="ghost-bg">DAVA</div>
+
+            <div class="hero-content">
+                <div class="hero-eyebrow">Game Designer & Web Developer</div>
+                <h1>
+                    Dava
+                    <span class="line2">Koeswoyo</span>
+                    <span class="line3">-building worlds.</span>
+                </h1>
+                <div class="hero-bottom">
+                    <p class="hero-desc">
+                        <strong>Full-stack developer & game designer.</strong><br>
+                        Building immersive VR/AR experiences and<br>
+                        clean, fast websites. Unity - Unreal - HTML/CSS/JS<br>
+                        WordPress - XR. Based in Bali - worldwide.
+                    </p>
+                    <div class="hero-actions">
+                        <a href="#contact" class="btn-p">Start a project <span aria-hidden="true">&rarr;</span></a>
+                        <a href="#websites" class="btn-g">View work</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="marquee-wrap" aria-hidden="true">
+            <div class="marquee-track">
+                <div class="marquee-item">
+                    <span class="m-word">Game Designer</span><span class="m-sep">*</span>
+                    <span class="m-word">Web Developer</span><span class="m-sep">*</span>
+                    <span class="m-word">Unity & Unreal</span><span class="m-sep">*</span>
+                    <span class="m-word">AR - VR - XR</span><span class="m-sep">*</span>
+                    <span class="m-word">WordPress</span><span class="m-sep">*</span>
+                    <span class="m-word">HTML - CSS - JS</span><span class="m-sep">*</span>
+                    <span class="m-word">Bali, Indonesia</span><span class="m-sep">*</span>
+                    <span class="m-word">Available for work</span><span class="m-sep">*</span>
+                </div>
+                <div class="marquee-item">
+                    <span class="m-word">Game Designer</span><span class="m-sep">*</span>
+                    <span class="m-word">Web Developer</span><span class="m-sep">*</span>
+                    <span class="m-word">Unity & Unreal</span><span class="m-sep">*</span>
+                    <span class="m-word">AR - VR - XR</span><span class="m-sep">*</span>
+                    <span class="m-word">WordPress</span><span class="m-sep">*</span>
+                    <span class="m-word">HTML - CSS - JS</span><span class="m-sep">*</span>
+                    <span class="m-word">Bali, Indonesia</span><span class="m-sep">*</span>
+                    <span class="m-word">Available for work</span><span class="m-sep">*</span>
+                </div>
+            </div>
+        </div>
+
+        <section id="websites">
+            <div class="section-ghost section-ghost-web">WEB</div>
+            <div class="s-label">
+                <span class="s-label-index">- 01 -</span>
+                <span>Web work</span>
+            </div>
+            <div class="reveal">
+                <h2>Sites I've <em>built.</em></h2>
+                <p class="s-sub">WordPress builds, custom HTML/CSS/JS, and plugin dev. Clean, fast, purposeful.</p>
+            </div>
+            <div class="webdeck-shell reveal">
+                <div class="webdeck-info">
+                    <div class="webdeck-kicker">Active website</div>
+                    <div class="webdeck-copy" id="webdeck-copy"></div>
+                    <div class="webdeck-actions">
+                        <button class="webdeck-button" type="button" data-webdeck-dir="prev">Previous</button>
+                        <button class="webdeck-button" type="button" data-webdeck-dir="next">Next</button>
+                    </div>
+                </div>
+
+                <div class="webdeck-stage-shell">
+                    <div class="webdeck-topline">
+                        <span>Website deck</span>
+                        <span id="webdeck-counter">01 / 01</span>
+                    </div>
+                    <div class="webdeck-stage" id="webdeck-stage" aria-live="polite"></div>
+                </div>
+            </div>
+        </section>
+
+        <div class="marquee-wrap" aria-hidden="true">
+            <div class="marquee-track marquee-track-reverse">
+                <div class="marquee-item">
+                    <span class="m-word">WordPress</span><span class="m-sep">*</span>
+                    <span class="m-word">HTML - CSS - JS</span><span class="m-sep">*</span>
+                    <span class="m-word">Figma</span><span class="m-sep">*</span>
+                    <span class="m-word">Plugin Dev</span><span class="m-sep">*</span>
+                    <span class="m-word">Custom Blocks</span><span class="m-sep">*</span>
+                    <span class="m-word">Web Developer</span><span class="m-sep">*</span>
+                    <span class="m-word">Remote-friendly</span><span class="m-sep">*</span>
+                    <span class="m-word">Fast & clean</span><span class="m-sep">*</span>
+                </div>
+                <div class="marquee-item">
+                    <span class="m-word">WordPress</span><span class="m-sep">*</span>
+                    <span class="m-word">HTML - CSS - JS</span><span class="m-sep">*</span>
+                    <span class="m-word">Figma</span><span class="m-sep">*</span>
+                    <span class="m-word">Plugin Dev</span><span class="m-sep">*</span>
+                    <span class="m-word">Custom Blocks</span><span class="m-sep">*</span>
+                    <span class="m-word">Web Developer</span><span class="m-sep">*</span>
+                    <span class="m-word">Remote-friendly</span><span class="m-sep">*</span>
+                    <span class="m-word">Fast & clean</span><span class="m-sep">*</span>
+                </div>
+            </div>
+        </div>
+
+        <section id="games">
+            <div class="section-ghost section-ghost-games">GAMES</div>
+            <div class="s-label">
+                <span class="s-label-index">- 02 -</span>
+                <span>Game work</span>
+            </div>
+            <div class="reveal">
+                <h2><em>Games</em> I've made.</h2>
+                <p class="s-sub">VR, AR, and XR experiences - designed with purpose, tested with real users.</p>
+            </div>
+
+            <div class="games-grid reveal">
+                <article class="gc featured" data-game="vr">
+                    <div class="gc-engine">Unity VR - Gaze-based - Serious Game</div>
+                    <div class="gc-title">VR Vaccination Distraction Games</div>
+                    <p class="gc-desc">6 Unity VR gaze-based minigames helping nurses keep children calm during vaccinations. Scrum Master of a 6-person team at XR Lab, Netherlands (2022-2023). Scheduled and conducted testing with healthcare professionals. Translated findings directly into design and gameplay improvements.</p>
+                    <div class="gc-ghost-n">01</div>
+                </article>
+
+                <article class="gc" data-game="ar">
+                    <div class="gc-engine">Unity 6 - AR Storytelling Tool</div>
+                    <div class="gc-title">AR Story Builder</div>
+                    <p class="gc-desc">Graduation project for XR Lab: built a Unity package for interactive AR storybooks with a visual story graph, reusable interactions, AR onboarding, templates, and iterative user testing.</p>
+                    <div class="gc-ghost-n">02</div>
+                </article>
+
+                <article class="gc" data-game="unreal">
+                    <div class="gc-engine">Unreal Engine</div>
+                    <div class="gc-title">Unreal Engine Project</div>
+                    <p class="gc-desc">Game project developed in Unreal Engine as part of BSc Game Design, Hanze University of Applied Sciences, Netherlands. Add your own description here.</p>
+                    <div class="gc-ghost-n">03</div>
+                </article>
+
+            </div>
+        </section>
+
+        <div class="marquee-wrap" aria-hidden="true">
+            <div class="marquee-track">
+                <div class="marquee-item">
+                    <span class="m-word">WordPress</span><span class="m-sep">*</span>
+                    <span class="m-word">HTML - CSS - JS</span><span class="m-sep">*</span>
+                    <span class="m-word">Figma</span><span class="m-sep">*</span>
+                    <span class="m-word">Plugin Dev</span><span class="m-sep">*</span>
+                    <span class="m-word">Custom Blocks</span><span class="m-sep">*</span>
+                    <span class="m-word">Web Developer</span><span class="m-sep">*</span>
+                    <span class="m-word">Remote-friendly</span><span class="m-sep">*</span>
+                    <span class="m-word">Fast & clean</span><span class="m-sep">*</span>
+                </div>
+                <div class="marquee-item">
+                    <span class="m-word">WordPress</span><span class="m-sep">*</span>
+                    <span class="m-word">HTML - CSS - JS</span><span class="m-sep">*</span>
+                    <span class="m-word">Figma</span><span class="m-sep">*</span>
+                    <span class="m-word">Plugin Dev</span><span class="m-sep">*</span>
+                    <span class="m-word">Custom Blocks</span><span class="m-sep">*</span>
+                    <span class="m-word">Web Developer</span><span class="m-sep">*</span>
+                    <span class="m-word">Remote-friendly</span><span class="m-sep">*</span>
+                    <span class="m-word">Fast & clean</span><span class="m-sep">*</span>
+                </div>
+            </div>
+        </div>
+
+        <section id="contact">
+            <div class="section-ghost section-ghost-contact">CONTACT</div>
+            <div class="contact-top">
+                <div class="s-label">
+                    <span class="s-label-index">- 03 -</span>
+                    <span>Get in touch</span>
+                </div>
+                <div class="contact-headline reveal">
+                    Let's build
+                    <span class="pushed"><em>something</em> great.</span>
+                </div>
+            </div>
+
+            <div class="contact-grid reveal">
+                <a href="mailto:davakswy@gmail.com" class="ci">
+                    <div class="ci-left">
+                        <div class="ci-key">Email</div>
+                        <div class="ci-val">davakswy@gmail.com</div>
+                    </div>
+                    <div class="ci-arrow">&#8599;</div>
+                </a>
+                <a href="https://davakoeswoyo.github.io" target="_blank" rel="noreferrer" class="ci">
+                    <div class="ci-left">
+                        <div class="ci-key">Portfolio / GitHub</div>
+                        <div class="ci-val">davakoeswoyo.github.io</div>
+                    </div>
+                    <div class="ci-arrow">&#8599;</div>
+                </a>
+                <a href="tel:+6281139777799" class="ci">
+                    <div class="ci-left">
+                        <div class="ci-key">Phone - Indonesia</div>
+                        <div class="ci-val">+62 811 3977 799</div>
+                    </div>
+                    <div class="ci-arrow">&#8599;</div>
+                </a>
+                <a href="tel:+31648471894" class="ci">
+                    <div class="ci-left">
+                        <div class="ci-key">Phone - Netherlands</div>
+                        <div class="ci-val">+31 64 84 71 89 4</div>
+                    </div>
+                    <div class="ci-arrow">&#8599;</div>
+                </a>
+            </div>
+
+            <footer>
+                <a href="#hero" class="footer-logo">Dava <span>K.</span></a>
+                <span>&copy; 2026 Dava Koeswoyo</span>
+                <span>Bali, Indonesia</span>
+            </footer>
+        </section>
+    </main>
+
+    <div id="site-preview" aria-hidden="true">
+        <div class="preview-shell">
+            <div class="preview-bar">
+                <div class="preview-dot"></div>
+                <div class="preview-dot"></div>
+                <div class="preview-dot"></div>
+                <div class="preview-url" id="preview-url"></div>
+            </div>
+            <div class="preview-screen" id="preview-screen"></div>
+            <div class="preview-caption">
+                <span id="preview-name"></span>
+                <span>hover preview *</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="proj-overlay" aria-hidden="true">
+        <div class="po-ghost" id="po-ghost"></div>
+        <div class="po-header">
+            <button class="po-back" id="close-overlay-btn" type="button">Back to portfolio</button>
+            <div class="po-logo">Dava <span>K.</span></div>
+            <div class="po-num" id="po-num">001</div>
+        </div>
+        <div class="po-hero">
+            <div class="po-hero-mock" id="po-hero-mock"></div>
+            <div class="po-hero-overlay"></div>
+            <div class="po-hero-title">
+                <div class="po-hero-eyebrow" id="po-eyebrow"></div>
+                <div class="po-title" id="po-title"></div>
+            </div>
+        </div>
+        <div class="po-body">
+            <div class="po-main">
+                <div class="po-section-label">Overview</div>
+                <div class="po-desc" id="po-desc"></div>
+                <div class="po-section-label">Screens</div>
+                <div class="po-screens" id="po-screens"></div>
+                <div class="po-section-label">My role</div>
+                <div class="po-desc" id="po-role"></div>
+            </div>
+            <aside class="po-sidebar">
+                <div id="po-preview"></div>
+                <div class="po-divider" id="po-preview-divider"></div>
+                <div class="po-meta-block">
+                    <div class="po-meta-key">Client</div>
+                    <div class="po-meta-val" id="po-client"></div>
+                </div>
+                <div class="po-meta-block">
+                    <div class="po-meta-key">Year</div>
+                    <div class="po-meta-val" id="po-year"></div>
+                </div>
+                <div class="po-meta-block">
+                    <div class="po-meta-key">Type</div>
+                    <div class="po-meta-val" id="po-type"></div>
+                </div>
+                <div class="po-divider"></div>
+                <div class="po-meta-block">
+                    <div class="po-meta-key">Tech stack</div>
+                    <div class="po-stack-pills" id="po-stack"></div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <div id="image-focus-overlay" aria-hidden="true">
+        <div class="image-focus-shell">
+            <button class="image-focus-close" id="image-focus-close" type="button">Close image</button>
+            <img id="image-focus-image" alt="">
+            <div class="image-focus-caption" id="image-focus-caption"></div>
+        </div>
+    </div>
 </body>
 </html>
