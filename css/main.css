@@ -1946,12 +1946,17 @@ footer {
 
     .hero-actions {
         flex-direction: row;
+        align-items: center;
         width: 100%;
         gap: 16px;
     }
 
     .btn-p {
         padding: 12px 22px;
+    }
+
+    .hero-actions .btn-g {
+        min-height: 40px;
     }
 
     .games-grid,
