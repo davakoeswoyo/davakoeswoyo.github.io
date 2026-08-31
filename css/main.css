@@ -24,8 +24,10 @@
     --mono: "Geist Mono", "Courier New", monospace;
 }
 
-html {
-    scroll-behavior: smooth;
+@media (prefers-reduced-motion: no-preference) {
+    html {
+        scroll-behavior: smooth;
+    }
 }
 
 body {
@@ -459,6 +461,12 @@ h1 .line3 {
     animation: marquee 28s linear infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+    .marquee-track {
+        animation: none;
+    }
+}
+
 .marquee-track-reverse {
     animation-direction: reverse;
     animation-duration: 24s;
@@ -803,6 +811,54 @@ h2 {
     border-color: rgba(167, 139, 250, 0.4);
     background: rgba(124, 58, 237, 0.14);
     transform: translateY(1px) scale(0.985);
+}
+
+.webdeck-pitch {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 18px;
+    padding: 14px 18px;
+    border: 1px solid rgba(167, 139, 250, 0.22);
+    border-radius: 14px;
+    background: rgba(124, 58, 237, 0.07);
+    text-decoration: none;
+    color: var(--ink);
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.webdeck-pitch:hover {
+    border-color: rgba(167, 139, 250, 0.45);
+    background: rgba(124, 58, 237, 0.13);
+    transform: translateY(-1px);
+}
+
+.webdeck-pitch-key {
+    font-size: 9px;
+    letter-spacing: 2.4px;
+    text-transform: uppercase;
+    color: var(--vlight);
+    padding: 4px 9px;
+    border: 1px solid rgba(167, 139, 250, 0.3);
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.webdeck-pitch-val {
+    font-size: 12px;
+    letter-spacing: 0.6px;
+    color: var(--ink2);
+    flex: 1;
+}
+
+.webdeck-pitch-arrow {
+    font-size: 14px;
+    color: var(--vlight);
+    transition: transform 0.2s ease;
+}
+
+.webdeck-pitch:hover .webdeck-pitch-arrow {
+    transform: translate(2px, -2px);
 }
 
 .webdeck-stage-shell {
@@ -1805,6 +1861,25 @@ footer {
     z-index: 1;
     transform: none;
     text-align: right;
+}
+
+/* Keyboard focus needs to be obvious: the custom cursor hides the pointer. */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid var(--vlight);
+    outline-offset: 3px;
+    border-radius: 4px;
+}
+
+.gc:focus-visible {
+    background: var(--bg);
+}
+
+.gc:focus-visible .gc-title,
+.webdeck-card:focus-visible .webdeck-label strong {
+    color: var(--vlight);
 }
 
 @keyframes pulse {
