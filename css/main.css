@@ -60,8 +60,7 @@ button {
 
     a,
     button,
-    .webdeck-card,
-    .gc {
+    .webdeck-card {
         cursor: none;
     }
 
@@ -304,7 +303,6 @@ nav {
 }
 
 .hero-eyebrow,
-.gc-engine,
 .po-hero-eyebrow {
     display: flex;
     align-items: center;
@@ -322,7 +320,6 @@ nav {
 }
 
 .hero-eyebrow::before,
-.gc-engine::before,
 .po-hero-eyebrow::before {
     content: "";
     height: 1px;
@@ -641,7 +638,7 @@ h2 {
 }
 
 #websites > .reveal:not(.webdeck-shell),
-#games > .reveal:not(.games-grid),
+#games > .reveal:not(.webdeck-shell),
 #contact .contact-top {
     max-width: var(--frame-copy);
     margin: 0 auto;
@@ -649,7 +646,7 @@ h2 {
 }
 
 #websites > .reveal:not(.webdeck-shell) .s-sub,
-#games > .reveal:not(.games-grid) .s-sub {
+#games > .reveal:not(.webdeck-shell) .s-sub {
     max-width: 560px;
     margin-left: auto;
     margin-right: auto;
@@ -667,6 +664,20 @@ h2 {
     align-items: stretch;
     max-width: var(--frame-wide);
     margin: 0 auto;
+}
+
+/* Games run the other way round: stage first, copy second. DOM order matches
+   visual order, so keyboard and screen-reader order stay correct. */
+.webdeck-shell-flip {
+    grid-template-columns: minmax(520px, 1.16fr) minmax(320px, 0.84fr);
+}
+
+.webdeck-shell-flip .webdeck-info,
+.webdeck-shell-flip .webdeck-stage-shell {
+    background:
+        radial-gradient(circle at top left, rgba(124, 58, 237, 0.16), transparent 32%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+        rgba(19, 15, 28, 0.84);
 }
 
 .webdeck-info,
@@ -941,6 +952,13 @@ h2 {
     background: rgba(255, 255, 255, 0.2);
 }
 
+.webdeck-url-plain {
+    margin-left: 0;
+    color: var(--vlight);
+    letter-spacing: 2.2px;
+    text-transform: uppercase;
+}
+
 .webdeck-url {
     margin-left: 6px;
     color: var(--ink3);
@@ -1202,93 +1220,6 @@ td {
     background: var(--bg2);
 }
 
-.games-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1px;
-    background: var(--bg3);
-    max-width: var(--frame-wide);
-    margin: 0 auto;
-}
-
-.gc {
-    --scroll-lift: 0px;
-    background: var(--bg2);
-    padding: 44px 40px;
-    position: relative;
-    overflow: hidden;
-    transition: background 0.25s;
-    transform: translate3d(0, var(--scroll-lift), 0);
-    will-change: transform;
-}
-
-.gc:hover {
-    background: var(--bg);
-}
-
-.gc[data-game] .gc-title {
-    transition: color 0.25s;
-}
-
-.gc[data-game]:hover .gc-title {
-    color: var(--vlight);
-}
-
-.gc.featured {
-    grid-column: span 2;
-}
-
-.gc-engine {
-    font-size: 10px;
-    color: var(--vlight);
-    letter-spacing: 2.5px;
-    margin-bottom: 18px;
-    gap: 10px;
-}
-
-.gc-engine::before {
-    width: 16px;
-    background: var(--vlt);
-}
-
-.gc-title {
-    font-family: var(--serif);
-    font-size: clamp(22px, 3vw, 36px);
-    font-weight: 300;
-    letter-spacing: -0.5px;
-    color: var(--ink);
-    margin-bottom: 14px;
-    line-height: 1.15;
-}
-
-.gc.featured .gc-title {
-    font-size: clamp(28px, 4vw, 52px);
-}
-
-.gc-desc {
-    font-size: 14px;
-    color: var(--ink2);
-    line-height: 2;
-    font-weight: 300;
-    max-width: 560px;
-}
-
-.gc-ghost-n {
-    --ghost-scroll: 0px;
-    position: absolute;
-    bottom: -24px;
-    right: 12px;
-    font-family: var(--serif);
-    font-size: 160px;
-    font-style: italic;
-    font-weight: 300;
-    color: rgba(124, 58, 237, 0.04);
-    pointer-events: none;
-    line-height: 1;
-    user-select: none;
-    transform: translate3d(0, var(--ghost-scroll), 0);
-    will-change: transform;
-}
 
 #contact {
     background: var(--bg);
@@ -1873,11 +1804,7 @@ button:focus-visible,
     border-radius: 4px;
 }
 
-.gc:focus-visible {
-    background: var(--bg);
-}
 
-.gc:focus-visible .gc-title,
 .webdeck-card:focus-visible .webdeck-label strong {
     color: var(--vlight);
 }
@@ -1973,7 +1900,7 @@ button:focus-visible,
     }
 
     #websites > .reveal:not(.webdeck-shell),
-    #games > .reveal:not(.games-grid),
+    #games > .reveal:not(.webdeck-shell),
     #contact .contact-top {
         max-width: none;
         margin: 0;
@@ -1981,7 +1908,7 @@ button:focus-visible,
     }
 
     #websites > .reveal:not(.webdeck-shell) .s-sub,
-    #games > .reveal:not(.games-grid) .s-sub {
+    #games > .reveal:not(.webdeck-shell) .s-sub {
         max-width: 100%;
         margin-left: 0;
         margin-right: 0;
@@ -2034,9 +1961,9 @@ button:focus-visible,
         min-height: 40px;
     }
 
-    .games-grid,
     .contact-grid,
     .webdeck-shell,
+    .webdeck-shell-flip,
     .po-body,
     .po-screens {
         grid-template-columns: 1fr;
@@ -2063,22 +1990,6 @@ button:focus-visible,
 
     .webdeck-actions {
         flex-direction: column;
-    }
-
-    .gc.featured {
-        grid-column: span 1;
-    }
-
-    .gc {
-        padding: 32px 24px;
-    }
-
-    .gc-title {
-        font-size: 20px;
-    }
-
-    .gc.featured .gc-title {
-        font-size: clamp(24px, 7vw, 36px);
     }
 
     footer {

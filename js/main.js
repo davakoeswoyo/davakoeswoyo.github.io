@@ -32,36 +32,23 @@ const overlayFields = {
     preview: document.getElementById("po-preview"),
     previewDivider: document.getElementById("po-preview-divider")
 };
-const webDeckCopy = document.getElementById("webdeck-copy");
-const webDeckCounter = document.getElementById("webdeck-counter");
-const webDeckStage = document.getElementById("webdeck-stage");
-const webDeckControls = Array.from(document.querySelectorAll("[data-webdeck-dir]"));
-
 let mouseX = 0;
 let mouseY = 0;
 let ringX = 0;
 let ringY = 0;
 let hidePreviewTimer;
-let webDeckOrder = [];
-let webDeckCards = [];
-let webDeckActiveIndex = 0;
-let webDeckIntervalId = null;
-let webDeckTimeline = null;
-let webDeckAnimating = false;
-let webDeckQueuedDirection = 0;
 let isOverlayOpen = false;
 let isImageFocusOpen = false;
 
-const webDeckItems = getWebsiteDeckItems();
-const webDeckTiltStates = new WeakMap();
-const WEBDECK_CARD_DISTANCE = 72;
-const WEBDECK_VERTICAL_DISTANCE = 78;
-const WEBDECK_DELAY = 4200;
-const WEBDECK_TILT = {
+const decks = [];
+const DECK_CARD_DISTANCE = 72;
+const DECK_VERTICAL_DISTANCE = 78;
+const DECK_DELAY = 4200;
+const DECK_TILT = {
     rotateAmplitude: 12,
     hoverScale: 1.045
 };
-const WEBDECK_MOTION = {
+const DECK_MOTION = {
     ease: "power3.out",
     durDrop: 0.8,
     durMove: 0.9,
@@ -103,21 +90,28 @@ function stripHtml(html = "") {
         .trim();
 }
 
-function getWebsiteDeckItems() {
+function getDeckItems(medium) {
     return Object.entries(work)
-        .filter(([, entry]) => entry.medium === "web")
+        .filter(([, entry]) => entry.medium === medium)
         .sort(([, a], [, b]) => String(a.num).localeCompare(String(b.num), undefined, { numeric: true }))
-        .map(([key, entry]) => ({
-            key,
-            title: entry.client,
-            category: entry.type,
-            url: entry.liveUrl || "",
-            image: entry.screens?.[0]?.image || entry.preview?.screenshotUrl || "",
-            year: entry.year,
-            desc: getSummary(entry),
-            tags: (entry.stack || []).slice(0, 3)
-        }))
-        .filter((item) => item.image);
+        .map(([key, entry]) => {
+            const image = entry.screens?.[0]?.image || entry.preview?.screenshotUrl || "";
+
+            return {
+                key,
+                name: entry.name,
+                category: entry.type,
+                year: entry.year,
+                url: entry.liveUrl || "",
+                // websites show their domain in the card chrome, games their engine
+                chrome: entry.liveUrl ? entry.liveUrl.replace(/^https?:\/\//, "") : entry.eyebrow,
+                image,
+                html: image ? "" : (entry.preview?.html || entry.heroHtml || ""),
+                desc: getSummary(entry),
+                tags: (entry.stack || []).slice(0, 3)
+            };
+        })
+        .filter((item) => item.image || item.html);
 }
 
 function renderImageTag(src, alt, className, extraAttributes = "") {
@@ -197,8 +191,8 @@ function initScrollMotion() {
     }
 
     const deckTargets = Array.from(document.querySelectorAll(".webdeck-card-tilt"));
-    const panelTargets = Array.from(document.querySelectorAll(".gc, .ci"));
-    const ghostTargets = Array.from(document.querySelectorAll(".ghost-bg, .section-ghost, .gc-ghost-n"));
+    const panelTargets = Array.from(document.querySelectorAll(".ci"));
+    const ghostTargets = Array.from(document.querySelectorAll(".ghost-bg, .section-ghost"));
 
     if (!deckTargets.length && !panelTargets.length && !ghostTargets.length) {
         return;
@@ -396,389 +390,431 @@ function renderProjectSections(sections = []) {
         .join("");
 }
 
-function renderWebDeckInfo(index, animate = false) {
-    const item = webDeckItems[index];
-    if (!item || !webDeckCopy || !webDeckCounter) {
-        return;
-    }
+function renderDeckCard(item, index) {
+    const chrome = item.url
+        ? `<span class="webdeck-dot"></span><span class="webdeck-dot"></span><span class="webdeck-dot"></span>
+                    <div class="webdeck-url">${escapeAttribute(item.chrome)}</div>`
+        : `<div class="webdeck-url webdeck-url-plain">${escapeAttribute(item.chrome)}</div>`;
 
-    const counterText = `${String(index + 1).padStart(2, "0")} / ${String(webDeckItems.length).padStart(2, "0")}`;
-    const markup = `
-        <div class="webdeck-head">
-            <div class="webdeck-count">${counterText}</div>
-            <h3 class="webdeck-title">${item.title}</h3>
-            <div class="webdeck-meta">${item.category} / ${item.year}</div>
-        </div>
-        <p class="webdeck-body">${item.desc}</p>
-        <div class="webdeck-tags">
-            ${item.tags.map((tag) => `<span class="webdeck-tag">${tag}</span>`).join("")}
-        </div>
-        ${item.url ? `<a class="webdeck-site" href="${item.url}" target="_blank" rel="noreferrer">View live site</a>` : ""}
-    `;
+    // Projects with no capture fall back to their inline mock-up.
+    const media = item.image
+        ? renderImageTag(item.image, item.name, "", 'loading="lazy"')
+        : item.html;
 
-    if (animate && typeof window.gsap !== "undefined") {
-        window.gsap.to(webDeckCopy, {
-            opacity: 0,
-            y: 12,
-            duration: 0.2,
-            ease: "power2.out",
-            onComplete: () => {
-                webDeckCopy.innerHTML = markup;
-                window.gsap.fromTo(webDeckCopy, {
-                    opacity: 0,
-                    y: -12
-                }, {
-                    opacity: 1,
-                    y: 0,
-                    duration: 0.35,
-                    ease: "power2.out"
-                });
-            }
-        });
-    } else {
-        webDeckCopy.innerHTML = markup;
-    }
-
-    webDeckCounter.textContent = counterText;
-}
-
-function webDeckSlotAt(index, total) {
-    return {
-        x: index * WEBDECK_CARD_DISTANCE,
-        y: -index * WEBDECK_VERTICAL_DISTANCE,
-        z: -index * WEBDECK_CARD_DISTANCE * 1.5,
-        zIndex: total - index
-    };
-}
-
-function placeWebDeckNow(element, slot) {
-    if (typeof window.gsap !== "undefined") {
-        window.gsap.set(element, {
-            x: slot.x,
-            y: slot.y,
-            z: slot.z,
-            xPercent: -50,
-            yPercent: -50,
-            zIndex: slot.zIndex,
-            force3D: true
-        });
-        return;
-    }
-
-    element.style.transform = `translate3d(${slot.x}px, ${slot.y}px, ${slot.z}px) translate(-50%, -50%)`;
-    element.style.zIndex = String(slot.zIndex);
-}
-
-function clearWebDeckInterval() {
-    if (!webDeckIntervalId) {
-        return;
-    }
-
-    window.clearInterval(webDeckIntervalId);
-    webDeckIntervalId = null;
-}
-
-function resetWebDeckTilt(card, immediate = false) {
-    const tiltState = webDeckTiltStates.get(card);
-    if (!tiltState) {
-        return;
-    }
-
-    tiltState.targetRotateX = 0;
-    tiltState.targetRotateY = 0;
-    tiltState.targetScale = 1;
-    tiltState.isHovered = false;
-    card.classList.remove("is-hovered");
-
-    if (!immediate) {
-        return;
-    }
-
-    tiltState.currentRotateX = 0;
-    tiltState.currentRotateY = 0;
-    tiltState.currentScale = 1;
-    tiltState.visual.style.transform = "perspective(1600px) rotateX(0deg) rotateY(0deg) scale(1)";
-}
-
-function tickWebDeckTilt(card) {
-    const tiltState = webDeckTiltStates.get(card);
-    if (!tiltState) {
-        return;
-    }
-
-    tiltState.currentRotateX += (tiltState.targetRotateX - tiltState.currentRotateX) * 0.28;
-    tiltState.currentRotateY += (tiltState.targetRotateY - tiltState.currentRotateY) * 0.28;
-    tiltState.currentScale += (tiltState.targetScale - tiltState.currentScale) * 0.24;
-
-    tiltState.visual.style.transform = `perspective(1600px) rotateX(${tiltState.currentRotateX.toFixed(3)}deg) rotateY(${tiltState.currentRotateY.toFixed(3)}deg) scale(${tiltState.currentScale.toFixed(4)})`;
-
-    const needsMoreFrames =
-        Math.abs(tiltState.targetRotateX - tiltState.currentRotateX) > 0.02 ||
-        Math.abs(tiltState.targetRotateY - tiltState.currentRotateY) > 0.02 ||
-        Math.abs(tiltState.targetScale - tiltState.currentScale) > 0.002;
-
-    if (!tiltState.isHovered && !needsMoreFrames) {
-        tiltState.rafId = null;
-        return;
-    }
-
-    tiltState.rafId = window.requestAnimationFrame(() => tickWebDeckTilt(card));
-}
-
-function ensureWebDeckTiltFrame(card) {
-    const tiltState = webDeckTiltStates.get(card);
-    if (!tiltState || tiltState.rafId) {
-        return;
-    }
-
-    tiltState.rafId = window.requestAnimationFrame(() => tickWebDeckTilt(card));
-}
-
-function syncFrontWebDeckTilt(frontCardIndex = webDeckOrder[0]) {
-    webDeckCards.forEach((card) => {
-        const isFrontCard = Number(card.dataset.webdeckIndex) === frontCardIndex;
-        card.classList.toggle("is-tilt-enabled", isFrontCard);
-
-        if (!isFrontCard) {
-            resetWebDeckTilt(card, true);
-        }
-    });
-}
-
-function setupWebDeckTilt(card) {
-    const visual = card.querySelector(".webdeck-card-tilt");
-    if (!visual) {
-        return;
-    }
-
-    const tiltState = {
-        visual,
-        rafId: null,
-        isHovered: false,
-        currentRotateX: 0,
-        currentRotateY: 0,
-        currentScale: 1,
-        targetRotateX: 0,
-        targetRotateY: 0,
-        targetScale: 1
-    };
-
-    webDeckTiltStates.set(card, tiltState);
-
-    card.addEventListener("pointerenter", () => {
-        if (!card.classList.contains("is-tilt-enabled")) {
-            return;
-        }
-
-        tiltState.isHovered = true;
-        card.classList.add("is-hovered");
-        tiltState.targetScale = WEBDECK_TILT.hoverScale;
-        ensureWebDeckTiltFrame(card);
-    });
-
-    card.addEventListener("pointermove", (event) => {
-        if (!card.classList.contains("is-tilt-enabled")) {
-            return;
-        }
-
-        const rect = card.getBoundingClientRect();
-        const offsetX = event.clientX - rect.left - rect.width / 2;
-        const offsetY = event.clientY - rect.top - rect.height / 2;
-        const normalizedX = offsetX / (rect.width / 2);
-        const normalizedY = offsetY / (rect.height / 2);
-
-        tiltState.targetRotateX = normalizedY * -WEBDECK_TILT.rotateAmplitude;
-        tiltState.targetRotateY = normalizedX * WEBDECK_TILT.rotateAmplitude;
-        tiltState.targetScale = WEBDECK_TILT.hoverScale;
-        ensureWebDeckTiltFrame(card);
-    });
-
-    card.addEventListener("pointerleave", () => {
-        resetWebDeckTilt(card);
-        ensureWebDeckTiltFrame(card);
-    });
-}
-
-function getWebDeckTargetOrder(direction, order = webDeckOrder) {
-    if (direction === -1) {
-        const last = order[order.length - 1];
-        return [last, ...order.slice(0, -1)];
-    }
-
-    const [front, ...rest] = order;
-    return [...rest, front];
-}
-
-function getWebDeckAnimationOrder(targetOrder) {
-    return [targetOrder[targetOrder.length - 1], ...targetOrder.slice(0, -1)];
-}
-
-function reorderWebDeck(direction) {
-    webDeckOrder = getWebDeckTargetOrder(direction);
-
-    webDeckActiveIndex = webDeckOrder[0];
-}
-
-function scheduleWebDeck() {
-    clearWebDeckInterval();
-
-    if (isOverlayOpen || webDeckItems.length < 2) {
-        return;
-    }
-
-    webDeckIntervalId = window.setInterval(() => requestWebDeckSwap(1), WEBDECK_DELAY);
-}
-
-function finishWebDeckSwap() {
-    webDeckAnimating = false;
-    syncFrontWebDeckTilt();
-
-    if (webDeckQueuedDirection) {
-        const queuedDirection = webDeckQueuedDirection;
-        webDeckQueuedDirection = 0;
-        window.requestAnimationFrame(() => swapWebDeck(queuedDirection));
-        return;
-    }
-
-    scheduleWebDeck();
-}
-
-function requestWebDeckSwap(direction = 1) {
-    if (webDeckAnimating) {
-        webDeckQueuedDirection = direction;
-        return;
-    }
-
-    webDeckQueuedDirection = 0;
-    swapWebDeck(direction);
-}
-
-function swapWebDeck(direction = 1) {
-    if (!webDeckCards.length || webDeckAnimating) {
-        return;
-    }
-
-    if (typeof window.gsap === "undefined") {
-        reorderWebDeck(direction);
-        webDeckOrder.forEach((cardIndex, visualIndex) => {
-            placeWebDeckNow(webDeckCards[cardIndex], webDeckSlotAt(visualIndex, webDeckCards.length));
-        });
-        syncFrontWebDeckTilt();
-        renderWebDeckInfo(webDeckActiveIndex);
-        scheduleWebDeck();
-        return;
-    }
-
-    webDeckAnimating = true;
-    webDeckTimeline?.kill();
-    clearWebDeckInterval();
-    webDeckCards.forEach((card) => resetWebDeckTilt(card, true));
-    webDeckCards.forEach((card) => card.classList.remove("is-tilt-enabled"));
-    const targetOrder = getWebDeckTargetOrder(direction);
-    const animationOrder = getWebDeckAnimationOrder(targetOrder);
-    const [movingCardIndex, ...promotedCards] = animationOrder;
-    const nextFront = targetOrder[0];
-    const movingElement = webDeckCards[movingCardIndex];
-    const timeline = window.gsap.timeline({
-        onComplete: () => {
-            webDeckOrder = targetOrder;
-            webDeckActiveIndex = webDeckOrder[0];
-            finishWebDeckSwap();
-        }
-    });
-    webDeckTimeline = timeline;
-
-    timeline.to(movingElement, {
-        y: "+=520",
-        duration: WEBDECK_MOTION.durDrop,
-        ease: WEBDECK_MOTION.ease
-    });
-
-    timeline.addLabel("promote", `-=${WEBDECK_MOTION.durDrop * WEBDECK_MOTION.promoteOverlap}`);
-    timeline.call(() => renderWebDeckInfo(nextFront, true), undefined, "promote+=0.06");
-    timeline.call(() => syncFrontWebDeckTilt(nextFront), undefined, "promote+=0.18");
-
-    promotedCards.forEach((cardIndex, visualIndex) => {
-        const card = webDeckCards[cardIndex];
-        const slot = webDeckSlotAt(visualIndex, webDeckCards.length);
-        timeline.set(card, { zIndex: slot.zIndex }, "promote");
-        timeline.to(card, {
-            x: slot.x,
-            y: slot.y,
-            z: slot.z,
-            duration: WEBDECK_MOTION.durMove,
-            ease: WEBDECK_MOTION.ease
-        }, `promote+=${visualIndex * 0.1}`);
-    });
-
-    const backSlot = webDeckSlotAt(webDeckCards.length - 1, webDeckCards.length);
-    timeline.addLabel("return", `promote+=${WEBDECK_MOTION.durMove * WEBDECK_MOTION.returnDelay}`);
-    timeline.call(() => {
-        window.gsap.set(movingElement, { zIndex: backSlot.zIndex });
-    }, undefined, "return");
-    timeline.to(movingElement, {
-        x: backSlot.x,
-        y: backSlot.y,
-        z: backSlot.z,
-        duration: WEBDECK_MOTION.durReturn,
-        ease: WEBDECK_MOTION.ease
-    }, "return");
-    timeline.timeScale(WEBDECK_MOTION.speedMultiplier);
-}
-
-function initWebsiteDeck() {
-    if (!webDeckStage || !webDeckCopy || !webDeckItems.length) {
-        return;
-    }
-
-    webDeckOrder = webDeckItems.map((_, index) => index);
-    webDeckActiveIndex = webDeckOrder[0];
-    webDeckStage.innerHTML = webDeckItems.map((item, index) => `
-        <article class="webdeck-card" data-webdeck-index="${index}" data-project-key="${item.key}" aria-label="${item.title}" role="button" tabindex="0">
+    return `
+        <article class="webdeck-card" data-deck-index="${index}" data-project-key="${item.key}" aria-label="${escapeAttribute(item.name)}" role="button" tabindex="0">
             <div class="webdeck-card-tilt">
-                <div class="webdeck-browser">
-                    <span class="webdeck-dot"></span>
-                    <span class="webdeck-dot"></span>
-                    <span class="webdeck-dot"></span>
-                    <div class="webdeck-url">${item.url.replace(/^https?:\/\//, "")}</div>
-                </div>
-                <div class="webdeck-shot">
-                    ${renderImageTag(item.image, item.title, "", 'loading="lazy"')}
-                </div>
+                <div class="webdeck-browser">${chrome}</div>
+                <div class="webdeck-shot">${media}</div>
                 <div class="webdeck-label">
-                    <strong>${item.title}</strong>
+                    <strong>${item.name}</strong>
                     <span>${item.category}</span>
                 </div>
             </div>
         </article>
-    `).join("");
+    `;
+}
 
-    webDeckCards = Array.from(webDeckStage.querySelectorAll(".webdeck-card"));
+function createDeck(root) {
+    const items = getDeckItems(root.dataset.deck);
+    const copy = root.querySelector("[data-deck-copy]");
+    const counter = root.querySelector("[data-deck-counter]");
+    const stage = root.querySelector("[data-deck-stage]");
+    const controls = Array.from(root.querySelectorAll("[data-deck-dir]"));
 
-    webDeckCards.forEach((card, visualIndex) => {
-        placeWebDeckNow(card, webDeckSlotAt(visualIndex, webDeckCards.length));
-        setupWebDeckTilt(card);
+    if (!stage || !copy || !items.length) {
+        return null;
+    }
 
-        const key = card.dataset.projectKey;
-        const openCard = () => openOverlay(key);
-        card.addEventListener("click", openCard);
+    const tiltStates = new WeakMap();
+    let order = items.map((_, index) => index);
+    let cards = [];
+    let activeIndex = order[0];
+    let intervalId = null;
+    let timeline = null;
+    let animating = false;
+    let queuedDirection = 0;
+    let copyTween = null;
+
+    function slotAt(index, total) {
+        return {
+            x: index * DECK_CARD_DISTANCE,
+            y: -index * DECK_VERTICAL_DISTANCE,
+            z: -index * DECK_CARD_DISTANCE * 1.5,
+            zIndex: total - index
+        };
+    }
+
+    function placeNow(element, slot) {
+        if (typeof window.gsap !== "undefined") {
+            window.gsap.set(element, {
+                x: slot.x,
+                y: slot.y,
+                z: slot.z,
+                xPercent: -50,
+                yPercent: -50,
+                zIndex: slot.zIndex,
+                force3D: true
+            });
+            return;
+        }
+
+        element.style.transform = `translate3d(${slot.x}px, ${slot.y}px, ${slot.z}px) translate(-50%, -50%)`;
+        element.style.zIndex = String(slot.zIndex);
+    }
+
+    function clearTimer() {
+        if (!intervalId) {
+            return;
+        }
+
+        window.clearInterval(intervalId);
+        intervalId = null;
+    }
+
+    function schedule() {
+        clearTimer();
+
+        if (isOverlayOpen || items.length < 2) {
+            return;
+        }
+
+        intervalId = window.setInterval(() => requestSwap(1), DECK_DELAY);
+    }
+
+    function resetTilt(card, immediate = false) {
+        const tiltState = tiltStates.get(card);
+        if (!tiltState) {
+            return;
+        }
+
+        tiltState.targetRotateX = 0;
+        tiltState.targetRotateY = 0;
+        tiltState.targetScale = 1;
+        tiltState.isHovered = false;
+        card.classList.remove("is-hovered");
+
+        if (!immediate) {
+            return;
+        }
+
+        tiltState.currentRotateX = 0;
+        tiltState.currentRotateY = 0;
+        tiltState.currentScale = 1;
+        tiltState.visual.style.transform = "perspective(1600px) rotateX(0deg) rotateY(0deg) scale(1)";
+    }
+
+    function tickTilt(card) {
+        const tiltState = tiltStates.get(card);
+        if (!tiltState) {
+            return;
+        }
+
+        tiltState.currentRotateX += (tiltState.targetRotateX - tiltState.currentRotateX) * 0.28;
+        tiltState.currentRotateY += (tiltState.targetRotateY - tiltState.currentRotateY) * 0.28;
+        tiltState.currentScale += (tiltState.targetScale - tiltState.currentScale) * 0.24;
+
+        tiltState.visual.style.transform = `perspective(1600px) rotateX(${tiltState.currentRotateX.toFixed(3)}deg) rotateY(${tiltState.currentRotateY.toFixed(3)}deg) scale(${tiltState.currentScale.toFixed(4)})`;
+
+        const needsMoreFrames =
+            Math.abs(tiltState.targetRotateX - tiltState.currentRotateX) > 0.02 ||
+            Math.abs(tiltState.targetRotateY - tiltState.currentRotateY) > 0.02 ||
+            Math.abs(tiltState.targetScale - tiltState.currentScale) > 0.002;
+
+        if (!tiltState.isHovered && !needsMoreFrames) {
+            tiltState.rafId = null;
+            return;
+        }
+
+        tiltState.rafId = window.requestAnimationFrame(() => tickTilt(card));
+    }
+
+    function ensureTiltFrame(card) {
+        const tiltState = tiltStates.get(card);
+        if (!tiltState || tiltState.rafId) {
+            return;
+        }
+
+        tiltState.rafId = window.requestAnimationFrame(() => tickTilt(card));
+    }
+
+    function syncFrontTilt(frontCardIndex = order[0]) {
+        cards.forEach((card) => {
+            const isFrontCard = Number(card.dataset.deckIndex) === frontCardIndex;
+            card.classList.toggle("is-tilt-enabled", isFrontCard);
+
+            if (!isFrontCard) {
+                resetTilt(card, true);
+            }
+        });
+    }
+
+    function setupTilt(card) {
+        const visual = card.querySelector(".webdeck-card-tilt");
+        if (!visual) {
+            return;
+        }
+
+        const tiltState = {
+            visual,
+            rafId: null,
+            isHovered: false,
+            currentRotateX: 0,
+            currentRotateY: 0,
+            currentScale: 1,
+            targetRotateX: 0,
+            targetRotateY: 0,
+            targetScale: 1
+        };
+
+        tiltStates.set(card, tiltState);
+
+        card.addEventListener("pointerenter", () => {
+            if (!card.classList.contains("is-tilt-enabled")) {
+                return;
+            }
+
+            tiltState.isHovered = true;
+            card.classList.add("is-hovered");
+            tiltState.targetScale = DECK_TILT.hoverScale;
+            ensureTiltFrame(card);
+        });
+
+        card.addEventListener("pointermove", (event) => {
+            if (!card.classList.contains("is-tilt-enabled")) {
+                return;
+            }
+
+            const rect = card.getBoundingClientRect();
+            const offsetX = event.clientX - rect.left - rect.width / 2;
+            const offsetY = event.clientY - rect.top - rect.height / 2;
+
+            tiltState.targetRotateX = (offsetY / (rect.height / 2)) * -DECK_TILT.rotateAmplitude;
+            tiltState.targetRotateY = (offsetX / (rect.width / 2)) * DECK_TILT.rotateAmplitude;
+            tiltState.targetScale = DECK_TILT.hoverScale;
+            ensureTiltFrame(card);
+        });
+
+        card.addEventListener("pointerleave", () => {
+            resetTilt(card);
+            ensureTiltFrame(card);
+        });
+    }
+
+    function targetOrderFor(direction) {
+        if (direction === -1) {
+            const last = order[order.length - 1];
+            return [last, ...order.slice(0, -1)];
+        }
+
+        const [front, ...rest] = order;
+        return [...rest, front];
+    }
+
+    function renderInfo(index, animate = false) {
+        const item = items[index];
+        if (!item) {
+            return;
+        }
+
+        const counterText = `${String(index + 1).padStart(2, "0")} / ${String(items.length).padStart(2, "0")}`;
+        const markup = `
+            <div class="webdeck-head">
+                <div class="webdeck-count">${counterText}</div>
+                <h3 class="webdeck-title">${item.name}</h3>
+                <div class="webdeck-meta">${item.category} / ${item.year}</div>
+            </div>
+            <p class="webdeck-body">${item.desc}</p>
+            <div class="webdeck-tags">
+                ${item.tags.map((tag) => `<span class="webdeck-tag">${tag}</span>`).join("")}
+            </div>
+            ${item.url ? `<a class="webdeck-site" href="${item.url}" target="_blank" rel="noreferrer">View live site</a>` : ""}
+        `;
+
+        // Counter and copy are written together — updating the counter outside
+        // the tween let a queued swap leave them showing different projects.
+        const apply = () => {
+            copy.innerHTML = markup;
+            if (counter) {
+                counter.textContent = counterText;
+            }
+        };
+
+        // A second swap arriving mid-fade used to start a competing opacity
+        // tween, and the panel settled near-invisible. Only one may run.
+        copyTween?.kill();
+
+        if (animate && typeof window.gsap !== "undefined") {
+            copyTween = window.gsap.to(copy, {
+                opacity: 0,
+                y: 12,
+                duration: 0.2,
+                ease: "power2.out",
+                onComplete: () => {
+                    apply();
+                    copyTween = window.gsap.fromTo(copy, { opacity: 0, y: -12 }, {
+                        opacity: 1,
+                        y: 0,
+                        duration: 0.35,
+                        ease: "power2.out"
+                    });
+                }
+            });
+            return;
+        }
+
+        window.gsap?.set(copy, { opacity: 1, y: 0 });
+        apply();
+    }
+
+    function finishSwap() {
+        animating = false;
+        syncFrontTilt();
+
+        if (queuedDirection) {
+            const direction = queuedDirection;
+            queuedDirection = 0;
+            window.requestAnimationFrame(() => swap(direction));
+            return;
+        }
+
+        schedule();
+    }
+
+    function requestSwap(direction = 1) {
+        if (animating) {
+            queuedDirection = direction;
+            return;
+        }
+
+        queuedDirection = 0;
+        swap(direction);
+    }
+
+    function swap(direction = 1) {
+        if (!cards.length || animating) {
+            return;
+        }
+
+        if (typeof window.gsap === "undefined") {
+            order = targetOrderFor(direction);
+            activeIndex = order[0];
+            order.forEach((cardIndex, visualIndex) => {
+                placeNow(cards[cardIndex], slotAt(visualIndex, cards.length));
+            });
+            syncFrontTilt();
+            renderInfo(activeIndex);
+            schedule();
+            return;
+        }
+
+        animating = true;
+        timeline?.kill();
+        clearTimer();
+        cards.forEach((card) => {
+            resetTilt(card, true);
+            card.classList.remove("is-tilt-enabled");
+        });
+
+        const nextOrder = targetOrderFor(direction);
+        const animationOrder = [nextOrder[nextOrder.length - 1], ...nextOrder.slice(0, -1)];
+        const [movingCardIndex, ...promotedCards] = animationOrder;
+        const nextFront = nextOrder[0];
+        const movingElement = cards[movingCardIndex];
+
+        timeline = window.gsap.timeline({
+            onComplete: () => {
+                order = nextOrder;
+                activeIndex = order[0];
+                finishSwap();
+            }
+        });
+
+        timeline.to(movingElement, {
+            y: "+=520",
+            duration: DECK_MOTION.durDrop,
+            ease: DECK_MOTION.ease
+        });
+
+        timeline.addLabel("promote", `-=${DECK_MOTION.durDrop * DECK_MOTION.promoteOverlap}`);
+        timeline.call(() => renderInfo(nextFront, true), undefined, "promote+=0.06");
+        timeline.call(() => syncFrontTilt(nextFront), undefined, "promote+=0.18");
+
+        promotedCards.forEach((cardIndex, visualIndex) => {
+            const card = cards[cardIndex];
+            const slot = slotAt(visualIndex, cards.length);
+            timeline.set(card, { zIndex: slot.zIndex }, "promote");
+            timeline.to(card, {
+                x: slot.x,
+                y: slot.y,
+                z: slot.z,
+                duration: DECK_MOTION.durMove,
+                ease: DECK_MOTION.ease
+            }, `promote+=${visualIndex * 0.1}`);
+        });
+
+        const backSlot = slotAt(cards.length - 1, cards.length);
+        timeline.addLabel("return", `promote+=${DECK_MOTION.durMove * DECK_MOTION.returnDelay}`);
+        timeline.call(() => {
+            window.gsap.set(movingElement, { zIndex: backSlot.zIndex });
+        }, undefined, "return");
+        timeline.to(movingElement, {
+            x: backSlot.x,
+            y: backSlot.y,
+            z: backSlot.z,
+            duration: DECK_MOTION.durReturn,
+            ease: DECK_MOTION.ease
+        }, "return");
+        timeline.timeScale(DECK_MOTION.speedMultiplier);
+    }
+
+    stage.innerHTML = items.map(renderDeckCard).join("");
+    cards = Array.from(stage.querySelectorAll(".webdeck-card"));
+
+    cards.forEach((card, visualIndex) => {
+        placeNow(card, slotAt(visualIndex, cards.length));
+        setupTilt(card);
+
+        const open = () => openOverlay(card.dataset.projectKey);
+        card.addEventListener("click", open);
         card.addEventListener("keydown", (event) => {
             if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
-                openCard();
+                open();
             }
         });
+        card.addEventListener("mouseenter", (event) => showPreview(getEntry(card.dataset.projectKey), event));
+        card.addEventListener("mousemove", positionPreview);
+        card.addEventListener("mouseleave", hidePreview);
     });
 
-    webDeckControls.forEach((button) => {
+    controls.forEach((button) => {
         button.addEventListener("click", () => {
-            requestWebDeckSwap(button.dataset.webdeckDir === "next" ? 1 : -1);
+            requestSwap(button.dataset.deckDir === "next" ? 1 : -1);
         });
     });
 
-    syncFrontWebDeckTilt();
-    renderWebDeckInfo(webDeckActiveIndex);
-    scheduleWebDeck();
+    syncFrontTilt();
+    renderInfo(activeIndex);
+    schedule();
+
+    return {
+        pause: clearTimer,
+        resume: () => {
+            if (!animating) {
+                schedule();
+            }
+        }
+    };
+}
+
+function initDecks() {
+    document.querySelectorAll("[data-deck]").forEach((root) => {
+        const deck = createDeck(root);
+        if (deck) {
+            decks.push(deck);
+        }
+    });
 }
 
 function openOverlay(key) {
@@ -819,7 +855,7 @@ function openOverlay(key) {
     overlay.scrollTop = 0;
     document.body.classList.add("no-scroll");
     isOverlayOpen = true;
-    clearWebDeckInterval();
+    decks.forEach((deck) => deck.pause());
 }
 
 function closeOverlay() {
@@ -832,29 +868,7 @@ function closeOverlay() {
     overlay.setAttribute("aria-hidden", "true");
     document.body.classList.remove("no-scroll");
     isOverlayOpen = false;
-    if (!webDeckAnimating) {
-        scheduleWebDeck();
-    }
-}
-
-function initInteractiveCards(selector, dataKey) {
-    document.querySelectorAll(selector).forEach((element) => {
-        const key = element.dataset[dataKey];
-        if (!key) {
-            return;
-        }
-
-        element.addEventListener("mouseenter", (event) => showPreview(getEntry(key), event));
-        element.addEventListener("mousemove", positionPreview);
-        element.addEventListener("mouseleave", hidePreview);
-        element.addEventListener("click", () => openOverlay(key));
-        element.addEventListener("keydown", (event) => {
-            if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                openOverlay(key);
-            }
-        });
-    });
+    decks.forEach((deck) => deck.resume());
 }
 
 function openImageFocus(src, alt = "") {
@@ -965,7 +979,6 @@ initMarquees();
 initCurrentYear();
 initRevealAnimations();
 initScrollMotion();
-initWebsiteDeck();
-initInteractiveCards(".gc[data-game]", "game");
+initDecks();
 initImageFocus();
 initOverlay();
