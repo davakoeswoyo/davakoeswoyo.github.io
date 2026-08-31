@@ -426,6 +426,9 @@ function createDeck(root) {
         return null;
     }
 
+    // Which way the stack recedes. The mirrored games deck runs right-to-left
+    // so the cards fall away from the copy beside them.
+    const stackDirection = root.dataset.deckStack === "rtl" ? -1 : 1;
     const tiltStates = new WeakMap();
     let order = items.map((_, index) => index);
     let cards = [];
@@ -438,7 +441,7 @@ function createDeck(root) {
 
     function slotAt(index, total) {
         return {
-            x: index * DECK_CARD_DISTANCE,
+            x: index * DECK_CARD_DISTANCE * stackDirection,
             y: -index * DECK_VERTICAL_DISTANCE,
             z: -index * DECK_CARD_DISTANCE * 1.5,
             zIndex: total - index
