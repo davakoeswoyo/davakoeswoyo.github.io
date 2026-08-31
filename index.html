@@ -123,13 +123,13 @@
                 <h2>Sites I've <em>built.</em></h2>
                 <p class="s-sub">WordPress builds, custom HTML/CSS/JS, and plugin dev. Clean, fast, purposeful.</p>
             </div>
-            <div class="webdeck-shell reveal">
+            <div class="webdeck-shell reveal" data-deck="web">
                 <div class="webdeck-info">
                     <div class="webdeck-kicker">Active website</div>
-                    <div class="webdeck-copy" id="webdeck-copy"></div>
+                    <div class="webdeck-copy" data-deck-copy></div>
                     <div class="webdeck-actions">
-                        <button class="webdeck-button" type="button" data-webdeck-dir="prev">Previous</button>
-                        <button class="webdeck-button" type="button" data-webdeck-dir="next">Next</button>
+                        <button class="webdeck-button" type="button" data-deck-dir="prev">Previous</button>
+                        <button class="webdeck-button" type="button" data-deck-dir="next">Next</button>
                     </div>
                     <a class="webdeck-pitch" href="https://pitch.davakoeswoyo.com" target="_blank" rel="noreferrer">
                         <span class="webdeck-pitch-key">In progress</span>
@@ -141,9 +141,9 @@
                 <div class="webdeck-stage-shell">
                     <div class="webdeck-topline">
                         <span>Website deck</span>
-                        <span id="webdeck-counter">01 / 01</span>
+                        <span data-deck-counter>01 / 01</span>
                     </div>
-                    <div class="webdeck-stage" id="webdeck-stage" aria-live="polite"></div>
+                    <div class="webdeck-stage" data-deck-stage aria-live="polite"></div>
                 </div>
             </div>
         </section>
@@ -174,21 +174,23 @@
                 <p class="s-sub">VR, AR, and XR experiences - designed with purpose, tested with real users.</p>
             </div>
 
-            <div class="games-grid reveal">
-                <article class="gc featured" data-game="vr" role="button" tabindex="0" aria-label="VR Vaccination Distraction Games - open project">
-                    <div class="gc-engine">Unity VR - Gaze-based - Serious Game</div>
-                    <div class="gc-title">VR Vaccination Distraction Games</div>
-                    <p class="gc-desc">6 Unity VR gaze-based minigames helping nurses keep children calm during vaccinations. Scrum Master of a 6-person team at XR Lab, Netherlands (2022-2023). Scheduled and conducted testing with healthcare professionals. Translated findings directly into design and gameplay improvements.</p>
-                    <div class="gc-ghost-n">01</div>
-                </article>
+            <div class="webdeck-shell webdeck-shell-flip reveal" data-deck="game">
+                <div class="webdeck-stage-shell">
+                    <div class="webdeck-topline">
+                        <span>Game deck</span>
+                        <span data-deck-counter>01 / 01</span>
+                    </div>
+                    <div class="webdeck-stage" data-deck-stage aria-live="polite"></div>
+                </div>
 
-                <article class="gc featured" data-game="ar" role="button" tabindex="0" aria-label="AR Story Builder - open project">
-                    <div class="gc-engine">Unity 6 - AR Storytelling Tool</div>
-                    <div class="gc-title">AR Story Builder</div>
-                    <p class="gc-desc">Graduation project for XR Lab: built a Unity package for interactive AR storybooks with a visual story graph, reusable interactions, AR onboarding, templates, and iterative user testing.</p>
-                    <div class="gc-ghost-n">02</div>
-                </article>
-
+                <div class="webdeck-info">
+                    <div class="webdeck-kicker">Active project</div>
+                    <div class="webdeck-copy" data-deck-copy></div>
+                    <div class="webdeck-actions">
+                        <button class="webdeck-button" type="button" data-deck-dir="prev">Previous</button>
+                        <button class="webdeck-button" type="button" data-deck-dir="next">Next</button>
+                    </div>
+                </div>
             </div>
         </section>
 

@@ -6,6 +6,7 @@ window.portfolioData = {
     work: {
         dani: {
             medium: "web",
+            name: "Coaching by Dani",
             num: "001",
             ghost: "DANI",
             eyebrow: "WordPress - Figma - Netherlands",
@@ -39,6 +40,7 @@ window.portfolioData = {
 
         ascend: {
             medium: "web",
+            name: "Ascend Marketing",
             num: "002",
             ghost: "ASCEND",
             eyebrow: "WordPress - Remote - Netherlands",
@@ -119,6 +121,7 @@ window.portfolioData = {
 
         flex: {
             medium: "web",
+            name: "Flex Living Bali",
             num: "003",
             ghost: "FLEX",
             eyebrow: "WordPress - Figma - Bali, Indonesia",
@@ -152,6 +155,7 @@ window.portfolioData = {
 
         laia: {
             medium: "web",
+            name: "Laia Cafe & Spa",
             num: "004",
             ghost: "LAIA",
             eyebrow: "WordPress - Figma - Bali, Indonesia",
@@ -185,6 +189,7 @@ window.portfolioData = {
 
         vr: {
             medium: "game",
+            name: "VR Vaccination Games",
             num: "G01",
             ghost: "VR",
             eyebrow: "Unity VR - Gaze-based - XR Lab, Netherlands",
@@ -222,6 +227,7 @@ window.portfolioData = {
 
         ar: {
             medium: "game",
+            name: "AR Story Builder",
             num: "G02",
             ghost: "AR",
             eyebrow: "Graduation Project - Unity 6 - XR Lab, Netherlands",
