@@ -1,9 +1,4 @@
-const {
-    previewData = {},
-    gamePreviews = {},
-    projects = {},
-    games = {}
-} = window.portfolioData || {};
+const { work = {} } = window.portfolioData || {};
 
 const cursor = document.getElementById("cur");
 const cursorRing = document.getElementById("cur2");
@@ -77,11 +72,19 @@ const WEBDECK_MOTION = {
 };
 
 function getEntry(key) {
-    return projects[key] || games[key];
+    return work[key];
 }
 
-function getPreview(key) {
-    return previewData[key] || gamePreviews[key];
+function getPreviewLabel(entry) {
+    // Games carry their own chrome label; websites just show their domain.
+    return entry.preview?.label || (entry.liveUrl || "").replace(/^https?:\/\//, "");
+}
+
+function getSummary(entry) {
+    // descSections[0] is authored as a standalone opening paragraph, so the
+    // deck can use it directly instead of chopping the full body with a regex.
+    const opening = entry.descSections?.[0]?.body;
+    return stripHtml(Array.isArray(opening) ? opening[0] : opening || "");
 }
 
 function escapeAttribute(value = "") {
@@ -100,31 +103,20 @@ function stripHtml(html = "") {
         .trim();
 }
 
-function summarizeHtml(html = "") {
-    const text = stripHtml(html);
-    const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
-    const summary = (sentences.slice(0, 2).join(" ").trim() || text).trim();
-    return summary.length > 240 ? `${summary.slice(0, 237).trim()}...` : summary;
-}
-
 function getWebsiteDeckItems() {
-    return Object.entries(projects)
+    return Object.entries(work)
+        .filter(([, entry]) => entry.medium === "web")
         .sort(([, a], [, b]) => String(a.num).localeCompare(String(b.num), undefined, { numeric: true }))
-        .map(([key, entry]) => {
-            const preview = getPreview(key);
-            const image = entry.screens?.[0]?.image || preview?.screenshotUrl || "";
-
-            return {
-                key,
-                title: preview?.name || entry.client,
-                category: entry.type,
-                url: entry.liveUrl || preview?.url || "",
-                image,
-                year: entry.year,
-                desc: summarizeHtml(entry.desc),
-                tags: (entry.stack || []).slice(0, 3)
-            };
-        })
+        .map(([key, entry]) => ({
+            key,
+            title: entry.client,
+            category: entry.type,
+            url: entry.liveUrl || "",
+            image: entry.screens?.[0]?.image || entry.preview?.screenshotUrl || "",
+            year: entry.year,
+            desc: getSummary(entry),
+            tags: (entry.stack || []).slice(0, 3)
+        }))
         .filter((item) => item.image);
 }
 
@@ -140,16 +132,16 @@ function renderFocusableOverlayImage(src, alt, wrapperClass, imageClass, extraAt
     `;
 }
 
-function renderPreviewMedia(data, imageClassName) {
-    if (!data) {
+function renderPreviewMedia(media, alt, imageClassName) {
+    if (!media) {
         return "";
     }
 
-    if (data.screenshotUrl) {
-        return renderImageTag(data.screenshotUrl, data.name, imageClassName, 'fetchpriority="low"');
+    if (media.screenshotUrl) {
+        return renderImageTag(media.screenshotUrl, alt, imageClassName, 'fetchpriority="low"');
     }
 
-    return data.html || "";
+    return media.html || "";
 }
 
 function initCursor() {
@@ -212,33 +204,44 @@ function initScrollMotion() {
         return;
     }
 
+    const motionTargets = [
+        ...deckTargets.map((element, index) => ({
+            element,
+            kind: "deck",
+            direction: index % 2 === 0 ? 1 : -1
+        })),
+        ...panelTargets.map((element) => ({ element, kind: "panel", direction: 1 })),
+        ...ghostTargets.map((element) => ({ element, kind: "ghost", direction: 1 }))
+    ];
+
     let isTicking = false;
 
     function applyMotion() {
         isTicking = false;
         const viewportHeight = window.innerHeight || 1;
 
-        deckTargets.forEach((element, index) => {
+        // Every rect is read before any style is written. Interleaving the two
+        // makes the browser recompute layout once per element, per frame.
+        const progressValues = motionTargets.map(({ element }) => {
             const rect = element.getBoundingClientRect();
             const centerOffset = rect.top + rect.height / 2 - viewportHeight / 2;
-            const progress = Math.max(-1, Math.min(1, centerOffset / viewportHeight));
-            const direction = index % 2 === 0 ? 1 : -1;
-
-            element.style.setProperty("--scroll-lift", `${progress * -14}px`);
-            element.style.setProperty("--scroll-roll", `${progress * 1.8 * direction}deg`);
+            return Math.max(-1, Math.min(1, centerOffset / viewportHeight));
         });
 
-        panelTargets.forEach((element) => {
-            const rect = element.getBoundingClientRect();
-            const centerOffset = rect.top + rect.height / 2 - viewportHeight / 2;
-            const progress = Math.max(-1, Math.min(1, centerOffset / viewportHeight));
-            element.style.setProperty("--scroll-lift", `${progress * -16}px`);
-        });
+        motionTargets.forEach(({ element, kind, direction }, index) => {
+            const progress = progressValues[index];
 
-        ghostTargets.forEach((element) => {
-            const rect = element.getBoundingClientRect();
-            const centerOffset = rect.top + rect.height / 2 - viewportHeight / 2;
-            const progress = Math.max(-1, Math.min(1, centerOffset / viewportHeight));
+            if (kind === "deck") {
+                element.style.setProperty("--scroll-lift", `${progress * -14}px`);
+                element.style.setProperty("--scroll-roll", `${progress * 1.8 * direction}deg`);
+                return;
+            }
+
+            if (kind === "panel") {
+                element.style.setProperty("--scroll-lift", `${progress * -16}px`);
+                return;
+            }
+
             element.style.setProperty("--ghost-scroll", `${progress * -34}px`);
         });
     }
@@ -281,15 +284,15 @@ function positionPreview(event) {
     previewPopup.style.top = `${top}px`;
 }
 
-function showPreview(data, event) {
-    if (!data || !previewPopup || !previewScreen || !previewUrl || !previewName) {
+function showPreview(entry, event) {
+    if (!entry?.preview || !previewPopup || !previewScreen || !previewUrl || !previewName) {
         return;
     }
 
     window.clearTimeout(hidePreviewTimer);
-    previewScreen.innerHTML = renderPreviewMedia(data, "preview-image");
-    previewUrl.textContent = data.url;
-    previewName.textContent = data.name;
+    previewScreen.innerHTML = renderPreviewMedia(entry.preview, entry.client, "preview-image");
+    previewUrl.textContent = getPreviewLabel(entry);
+    previewName.textContent = entry.client;
     previewPopup.classList.add("visible");
     positionPreview(event);
 }
@@ -305,25 +308,24 @@ function hidePreview() {
 }
 
 function renderOverlayPreview(key) {
-    const data = getPreview(key);
     const entry = getEntry(key);
 
-    if (!data || !entry) {
+    if (!entry) {
         return "";
     }
 
-    const media = renderPreviewMedia(data, "po-preview-image");
+    const media = renderPreviewMedia(entry.preview, entry.client, "po-preview-image");
     if (!media) {
         return "";
     }
 
     if (entry.liveUrl) {
         return `
-            <a href="${entry.liveUrl}" class="po-preview-link" target="_blank" rel="noreferrer" aria-label="Open ${data.name} live site">
+            <a href="${entry.liveUrl}" class="po-preview-link" target="_blank" rel="noreferrer" aria-label="Open ${entry.client} live site">
                 <div class="po-preview-card">
                     <div class="po-preview-media">${media}</div>
                     <div class="po-preview-caption">
-                        <span>${data.name}</span>
+                        <span>${entry.client}</span>
                         <span class="po-preview-icon" aria-hidden="true">\u2197</span>
                     </div>
                 </div>
@@ -334,7 +336,7 @@ function renderOverlayPreview(key) {
     return `
         <div class="po-preview-card">
             <div class="po-preview-media">${media}</div>
-            <div class="po-preview-caption">${data.name}</div>
+            <div class="po-preview-caption">${entry.client}</div>
         </div>
     `;
 }
@@ -781,7 +783,6 @@ function initWebsiteDeck() {
 
 function openOverlay(key) {
     const entry = getEntry(key);
-    const preview = getPreview(key);
 
     if (!entry || !overlay) {
         return;
@@ -792,9 +793,9 @@ function openOverlay(key) {
         : "";
     const heroMarkup = entry.heroImage
         ? renderFocusableOverlayImage(entry.heroImage, entry.client, "po-hero-focus", "po-hero-image", heroImageAttributes)
-        : preview?.screenshotUrl
-            ? renderFocusableOverlayImage(preview.screenshotUrl, entry.client, "po-hero-focus", "po-hero-image", heroImageAttributes)
-            : entry.heroHtml || preview?.html || "";
+        : entry.preview?.screenshotUrl
+            ? renderFocusableOverlayImage(entry.preview.screenshotUrl, entry.client, "po-hero-focus", "po-hero-image", heroImageAttributes)
+            : entry.heroHtml || entry.preview?.html || "";
 
     overlayFields.num.textContent = entry.num;
     overlayFields.eyebrow.textContent = entry.eyebrow;
@@ -803,8 +804,8 @@ function openOverlay(key) {
     overlayFields.client.textContent = entry.client;
     overlayFields.year.textContent = entry.year;
     overlayFields.type.textContent = entry.type;
-    overlayFields.desc.innerHTML = entry.descSections?.length ? renderProjectSections(entry.descSections) : entry.desc;
-    overlayFields.role.innerHTML = entry.roleSections?.length ? renderProjectSections(entry.roleSections) : entry.role;
+    overlayFields.desc.innerHTML = renderProjectSections(entry.descSections);
+    overlayFields.role.innerHTML = renderProjectSections(entry.roleSections);
     overlayFields.hero.innerHTML = heroMarkup;
     overlayFields.stack.innerHTML = entry.stack
         .map((item) => `<span class="po-pill">${item}</span>`)
@@ -843,10 +844,16 @@ function initInteractiveCards(selector, dataKey) {
             return;
         }
 
-        element.addEventListener("mouseenter", (event) => showPreview(getPreview(key), event));
+        element.addEventListener("mouseenter", (event) => showPreview(getEntry(key), event));
         element.addEventListener("mousemove", positionPreview);
         element.addEventListener("mouseleave", hidePreview);
         element.addEventListener("click", () => openOverlay(key));
+        element.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openOverlay(key);
+            }
+        });
     });
 }
 
@@ -933,7 +940,29 @@ function initOverlay() {
     });
 }
 
+function initMarquees() {
+    // Each track scrolls to -50%, so it needs exactly two identical halves. The
+    // markup carries one; the duplicate is decorative and cloned here.
+    document.querySelectorAll(".marquee-track").forEach((track) => {
+        const item = track.firstElementChild;
+        if (!item || track.children.length > 1) {
+            return;
+        }
+
+        track.appendChild(item.cloneNode(true));
+    });
+}
+
+function initCurrentYear() {
+    const year = String(new Date().getFullYear());
+    document.querySelectorAll("[data-year]").forEach((element) => {
+        element.textContent = year;
+    });
+}
+
 initCursor();
+initMarquees();
+initCurrentYear();
 initRevealAnimations();
 initScrollMotion();
 initWebsiteDeck();

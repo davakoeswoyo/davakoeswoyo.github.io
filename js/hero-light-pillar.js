@@ -1,5 +1,4 @@
 (function () {
-    const THREE_MODULE_URL = new URL("js/vendor/three.module.js", document.baseURI).href;
     const DEFAULTS = {
         topColor: "#5227ff",
         bottomColor: "#ff9ffc",
@@ -16,20 +15,6 @@
     };
     let activeInstance = null;
     let bootToken = 0;
-    let threeModulePromise = null;
-
-    function supportsWebGL() {
-        const canvas = document.createElement("canvas");
-        return Boolean(canvas.getContext("webgl") || canvas.getContext("experimental-webgl"));
-    }
-
-    function loadThree() {
-        if (!threeModulePromise) {
-            threeModulePromise = import(THREE_MODULE_URL);
-        }
-
-        return threeModulePromise;
-    }
 
     function detectQuality(quality) {
         const isMobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -61,14 +46,14 @@
                 medium: {
                     iterations: 40,
                     waveIterations: 2,
-                    pixelRatio: Math.min(window.devicePixelRatio || 1, 1.25),
+                    pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5),
                     precision: "mediump",
                     stepMultiplier: 1.2,
                     targetFPS: 45
                 },
                 high: {
-                    iterations: 80,
-                    waveIterations: 4,
+                    iterations: 64,
+                    waveIterations: 3,
                     pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
                     precision: "highp",
                     stepMultiplier: 1.0,
@@ -87,14 +72,12 @@
         fallback.className = "light-pillar-fallback";
         fallback.setAttribute("aria-hidden", "true");
         container.appendChild(fallback);
-        container.classList.add("light-pillar-ready");
     }
 
     function unmountFallback(container) {
         const fallback = container.querySelector(".light-pillar-fallback");
-
         if (fallback) {
-            fallback.remove();
+            container.removeChild(fallback);
         }
     }
 
@@ -108,7 +91,81 @@
         return () => queryList.removeListener(listener);
     }
 
-    async function createLightPillar(options = {}, currentBootToken = 0) {
+    function createContext(canvas, preferHighPerformance) {
+        const attributes = {
+            alpha: true,
+            antialias: false,
+            depth: false,
+            stencil: false,
+            powerPreference: preferHighPerformance ? "high-performance" : "low-power",
+            failIfMajorPerformanceCaveat: false
+        };
+
+        return (
+            canvas.getContext("webgl", attributes) ||
+            canvas.getContext("experimental-webgl", attributes)
+        );
+    }
+
+    function compileShader(gl, type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            gl.deleteShader(shader);
+            return null;
+        }
+
+        return shader;
+    }
+
+    function createProgram(gl, vertexSource, fragmentSource) {
+        const vertexShader = compileShader(gl, gl.VERTEX_SHADER, vertexSource);
+        const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+
+        if (!vertexShader || !fragmentShader) {
+            return null;
+        }
+
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        // The shaders are reference-counted by the program once attached.
+        gl.deleteShader(vertexShader);
+        gl.deleteShader(fragmentShader);
+
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            gl.deleteProgram(program);
+            return null;
+        }
+
+        return program;
+    }
+
+    function parseColor(hex) {
+        const value = String(hex).replace("#", "");
+        const full = value.length === 3
+            ? value.split("").map((char) => char + char).join("")
+            : value;
+        const int = parseInt(full, 16) || 0;
+        // The original build fed three.js colors, which are linear-space floats.
+        const toLinear = (channel) => {
+            const normalized = channel / 255;
+            return normalized < 0.04045
+                ? normalized / 12.92
+                : Math.pow((normalized + 0.055) / 1.055, 2.4);
+        };
+
+        return [
+            toLinear((int >> 16) & 255),
+            toLinear((int >> 8) & 255),
+            toLinear(int & 255)
+        ];
+    }
+
+    function createLightPillar(options = {}, currentBootToken = 0) {
         const container = document.getElementById("hero-pillar");
         if (!container) {
             return null;
@@ -119,75 +176,25 @@
 
         Object.assign(container.style, { mixBlendMode: config.mixBlendMode });
 
-        if (!supportsWebGL()) {
+        const canvas = document.createElement("canvas");
+        const gl = createContext(canvas, profile.effectiveQuality === "high");
+
+        if (!gl) {
             mountFallback(container);
             return null;
         }
 
-        let THREE;
-        try {
-            THREE = await loadThree();
-        } catch (error) {
-            mountFallback(container);
-            return null;
-        }
-
-        if (currentBootToken !== bootToken) {
-            return null;
-        }
-
-        const size = new THREE.Vector2();
-        const mouse = new THREE.Vector2(0, 0);
-        const scene = new THREE.Scene();
-        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-        const pillarRotationRadians = (config.pillarRotation * Math.PI) / 180;
-        const waveSin = Math.sin(0.4);
-        const waveCos = Math.cos(0.4);
-        let renderer;
-
-        try {
-            renderer = new THREE.WebGLRenderer({
-                antialias: false,
-                alpha: true,
-                powerPreference: profile.effectiveQuality === "high" ? "high-performance" : "low-power",
-                precision: profile.settings.precision,
-                stencil: false,
-                depth: false
-            });
-        } catch (error) {
-            mountFallback(container);
-            return null;
-        }
-
-        function parseColor(hex) {
-            const color = new THREE.Color(hex);
-            return new THREE.Vector3(color.r, color.g, color.b);
-        }
-
-        function syncSize() {
-            const width = Math.max(container.clientWidth || window.innerWidth, 1);
-            const height = Math.max(container.clientHeight || window.innerHeight, 1);
-            size.set(width, height);
-            renderer.setPixelRatio(profile.settings.pixelRatio);
-            renderer.setSize(width, height, false);
-        }
-
-        unmountFallback(container);
-        syncSize();
-        renderer.domElement.setAttribute("aria-hidden", "true");
-        renderer.domElement.style.mixBlendMode = config.mixBlendMode;
-        container.appendChild(renderer.domElement);
-
-        const vertexShader = `
+        const vertexShaderSource = `
+            attribute vec2 aPosition;
             varying vec2 vUv;
 
             void main() {
-                vUv = uv;
-                gl_Position = vec4(position, 1.0);
+                vUv = aPosition * 0.5 + 0.5;
+                gl_Position = vec4(aPosition, 0.0, 1.0);
             }
         `;
 
-        const fragmentShader = `
+        const fragmentShaderSource = `
             precision ${profile.settings.precision} float;
 
             uniform float uTime;
@@ -212,6 +219,12 @@
             const float STEP_MULT = ${profile.settings.stepMultiplier.toFixed(1)};
             const int MAX_ITER = ${profile.settings.iterations};
             const int WAVE_ITER = ${profile.settings.waveIterations};
+
+            // GLSL ES 1.00 has no tanh. Clamped so exp() cannot overflow to inf.
+            vec3 tanhApprox(vec3 x) {
+                vec3 e = exp(2.0 * clamp(x, -10.0, 10.0));
+                return (e - 1.0) / (e + 1.0);
+            }
 
             void main() {
                 vec2 uv = (vUv * 2.0 - 1.0) * vec2(uResolution.x / uResolution.y, 1.0);
@@ -273,42 +286,77 @@
                 }
 
                 float widthNorm = uPillarWidth / 3.0;
-                col = tanh(col * uGlowAmount / widthNorm);
+                col = tanhApprox(col * uGlowAmount / widthNorm);
                 col -= fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) / 15.0 * uNoiseIntensity;
                 gl_FragColor = vec4(col * uIntensity, 1.0);
             }
         `;
 
-        const material = new THREE.ShaderMaterial({
-            vertexShader,
-            fragmentShader,
-            uniforms: {
-                uTime: { value: 0 },
-                uResolution: { value: size.clone() },
-                uMouse: { value: mouse },
-                uTopColor: { value: parseColor(config.topColor) },
-                uBottomColor: { value: parseColor(config.bottomColor) },
-                uIntensity: { value: config.intensity },
-                uInteractive: { value: config.interactive },
-                uGlowAmount: { value: config.glowAmount },
-                uPillarWidth: { value: config.pillarWidth },
-                uPillarHeight: { value: config.pillarHeight },
-                uNoiseIntensity: { value: config.noiseIntensity },
-                uRotCos: { value: 1.0 },
-                uRotSin: { value: 0.0 },
-                uPillarRotCos: { value: Math.cos(pillarRotationRadians) },
-                uPillarRotSin: { value: Math.sin(pillarRotationRadians) },
-                uWaveSin: { value: waveSin },
-                uWaveCos: { value: waveCos }
-            },
-            transparent: true,
-            depthWrite: false,
-            depthTest: false
-        });
+        const program = createProgram(gl, vertexShaderSource, fragmentShaderSource);
 
-        const geometry = new THREE.PlaneGeometry(2, 2);
-        const mesh = new THREE.Mesh(geometry, material);
-        scene.add(mesh);
+        if (!program) {
+            mountFallback(container);
+            return null;
+        }
+
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+
+        const positionLocation = gl.getAttribLocation(program, "aPosition");
+        gl.enableVertexAttribArray(positionLocation);
+        gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+        const uniform = (name) => gl.getUniformLocation(program, name);
+        const uniforms = {
+            time: uniform("uTime"),
+            resolution: uniform("uResolution"),
+            mouse: uniform("uMouse"),
+            rotCos: uniform("uRotCos"),
+            rotSin: uniform("uRotSin")
+        };
+
+        const pillarRotationRadians = (config.pillarRotation * Math.PI) / 180;
+        const topColor = parseColor(config.topColor);
+        const bottomColor = parseColor(config.bottomColor);
+        const size = { width: 0, height: 0 };
+        const mouse = { x: 0, y: 0 };
+
+        gl.useProgram(program);
+        // Constant for the lifetime of the program — set once, not per frame.
+        gl.uniform3f(uniform("uTopColor"), topColor[0], topColor[1], topColor[2]);
+        gl.uniform3f(uniform("uBottomColor"), bottomColor[0], bottomColor[1], bottomColor[2]);
+        gl.uniform1f(uniform("uIntensity"), config.intensity);
+        gl.uniform1i(uniform("uInteractive"), config.interactive ? 1 : 0);
+        gl.uniform1f(uniform("uGlowAmount"), config.glowAmount);
+        gl.uniform1f(uniform("uPillarWidth"), config.pillarWidth);
+        gl.uniform1f(uniform("uPillarHeight"), config.pillarHeight);
+        gl.uniform1f(uniform("uNoiseIntensity"), config.noiseIntensity);
+        gl.uniform1f(uniform("uPillarRotCos"), Math.cos(pillarRotationRadians));
+        gl.uniform1f(uniform("uPillarRotSin"), Math.sin(pillarRotationRadians));
+        gl.uniform1f(uniform("uWaveSin"), Math.sin(0.4));
+        gl.uniform1f(uniform("uWaveCos"), Math.cos(0.4));
+        gl.clearColor(0, 0, 0, 0);
+
+        function syncSize() {
+            const width = Math.max(container.clientWidth || window.innerWidth, 1);
+            const height = Math.max(container.clientHeight || window.innerHeight, 1);
+            const ratio = profile.settings.pixelRatio;
+
+            size.width = width;
+            size.height = height;
+            canvas.width = Math.floor(width * ratio);
+            canvas.height = Math.floor(height * ratio);
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            gl.uniform2f(uniforms.resolution, width, height);
+        }
+
+        unmountFallback(container);
+        canvas.setAttribute("aria-hidden", "true");
+        canvas.style.mixBlendMode = config.mixBlendMode;
+        container.appendChild(canvas);
+        syncSize();
+
         container.classList.add("light-pillar-ready");
 
         let isDestroyed = false;
@@ -328,9 +376,8 @@
             }, 16);
 
             const rect = container.getBoundingClientRect();
-            const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-            const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-            mouse.set(x, y);
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
         };
 
         let removeMediaListeners = [];
@@ -346,10 +393,12 @@
         const frameTime = 1000 / profile.settings.targetFPS;
 
         function renderFrame() {
-            material.uniforms.uTime.value = elapsed;
-            material.uniforms.uRotCos.value = Math.cos(elapsed * 0.3);
-            material.uniforms.uRotSin.value = Math.sin(elapsed * 0.3);
-            renderer.render(scene, camera);
+            gl.uniform1f(uniforms.time, elapsed);
+            gl.uniform1f(uniforms.rotCos, Math.cos(elapsed * 0.3));
+            gl.uniform1f(uniforms.rotSin, Math.sin(elapsed * 0.3));
+            gl.uniform2f(uniforms.mouse, mouse.x, mouse.y);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         }
 
         function destroy() {
@@ -366,7 +415,7 @@
             window.visualViewport?.removeEventListener("resize", onResize);
             window.removeEventListener("pagehide", onPageHide);
             document.removeEventListener("visibilitychange", onVisibilityChange);
-            renderer.domElement.removeEventListener("webglcontextlost", onContextLost);
+            canvas.removeEventListener("webglcontextlost", onContextLost);
 
             if (config.interactive) {
                 window.removeEventListener("pointermove", onPointerMove);
@@ -378,13 +427,12 @@
                 resizeObserver.disconnect();
             }
 
-            renderer.dispose();
-            renderer.forceContextLoss();
-            material.dispose();
-            geometry.dispose();
+            gl.deleteBuffer(buffer);
+            gl.deleteProgram(program);
+            gl.getExtension("WEBGL_lose_context")?.loseContext();
 
-            if (container.contains(renderer.domElement)) {
-                container.removeChild(renderer.domElement);
+            if (container.contains(canvas)) {
+                container.removeChild(canvas);
             }
         }
 
@@ -452,7 +500,6 @@
 
                 profile = nextProfile;
                 syncSize();
-                material.uniforms.uResolution.value.copy(size);
                 renderFrame();
             }, 150);
         };
@@ -475,7 +522,7 @@
             window.matchMedia("(pointer: coarse)")
         ];
         removeMediaListeners = mediaQueries.map((queryList) => addMediaListener(queryList, onResize));
-        renderer.domElement.addEventListener("webglcontextlost", onContextLost, false);
+        canvas.addEventListener("webglcontextlost", onContextLost, false);
         window.addEventListener("resize", onResize, { passive: true });
         window.addEventListener("orientationchange", onResize, { passive: true });
         window.visualViewport?.addEventListener("resize", onResize, { passive: true });
@@ -493,7 +540,7 @@
         return { destroy };
     }
 
-    async function bootLightPillar(options = {}) {
+    function bootLightPillar(options = {}) {
         const currentBootToken = ++bootToken;
 
         if (activeInstance) {
@@ -501,7 +548,7 @@
             activeInstance = null;
         }
 
-        const instance = await createLightPillar(options, currentBootToken);
+        const instance = createLightPillar(options, currentBootToken);
 
         if (currentBootToken !== bootToken) {
             if (instance) {

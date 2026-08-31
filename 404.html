@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page not found - Dava Koeswoyo</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+    <link rel="stylesheet" href="/css/fonts.css">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #0f0a18;
+            --ink: #faf7ff;
+            --ink3: #a394c8;
+            --vlight: #c4b0ff;
+            --serif: "Cormorant Garamond", Georgia, serif;
+            --mono: "Geist Mono", "Courier New", monospace;
+        }
+
+        body {
+            min-height: 100svh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 26px;
+            padding: 48px 24px;
+            text-align: center;
+            font-family: var(--mono);
+            color: var(--ink);
+            background:
+                radial-gradient(circle at 50% 108%, rgba(164, 116, 255, 0.16), transparent 36%),
+                linear-gradient(180deg, #0b0712 0%, #100918 40%, #160d21 100%);
+        }
+
+        .code {
+            font-size: 11px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--vlight);
+        }
+
+        h1 {
+            font-family: var(--serif);
+            font-weight: 300;
+            font-size: clamp(48px, 12vw, 92px);
+            line-height: 1;
+        }
+
+        h1 em { font-style: italic; color: var(--vlight); }
+
+        p {
+            max-width: 46ch;
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--ink3);
+        }
+
+        a {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 6px;
+            padding: 14px 26px;
+            border: 1px solid rgba(167, 139, 250, 0.3);
+            border-radius: 999px;
+            background: rgba(124, 58, 237, 0.08);
+            color: var(--ink);
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-decoration: none;
+            transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+        }
+
+        a:hover {
+            border-color: rgba(167, 139, 250, 0.5);
+            background: rgba(124, 58, 237, 0.14);
+            transform: translateY(-1px);
+        }
+
+        a:focus-visible { outline: 2px solid var(--vlight); outline-offset: 3px; }
+    </style>
+</head>
+<body>
+    <div class="code">Error 404</div>
+    <h1>Lost in <em>the void.</em></h1>
+    <p>That page does not exist - it may have moved, or the link may be out of date.</p>
+    <a href="/">Back to the portfolio <span aria-hidden="true">&rarr;</span></a>
+</body>
+</html>

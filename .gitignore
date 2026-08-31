@@ -6,3 +6,6 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# local tooling
+.claude/
